@@ -1,8 +1,8 @@
 package com.mg.app;
+
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.os.Environment;
-import android.util.Log;
 
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReadableMap;
@@ -24,31 +24,27 @@ public class Compression {
         Double quality = options.hasKey("compressImageQuality") ? options.getDouble("compressImageQuality") : null;
 
         if (maxWidth == null && maxHeight == null && quality == null) {
-            Log.d("image-crop-picker", "Skipping image compression");
             return new File(originalImagePath);
         }
 
-        Log.d("image-crop-picker", "Image compression activated");
         Compressor compressor = new Compressor(activity)
                 .setCompressFormat(Bitmap.CompressFormat.JPEG)
                 .setDestinationDirectoryPath(Environment.getExternalStoragePublicDirectory(
                         Environment.DIRECTORY_PICTURES).getAbsolutePath());
 
+
+
         if (quality == null) {
-            Log.d("image-crop-picker", "Compressing image with quality 100");
             compressor.setQuality(100);
         } else {
-            Log.d("image-crop-picker", "Compressing image with quality " + (quality * 100));
             compressor.setQuality((int) (quality * 100));
         }
 
         if (maxWidth != null) {
-            Log.d("image-crop-picker", "Compressing image with max width " + maxWidth);
             compressor.setMaxWidth(maxWidth);
         }
 
         if (maxHeight != null) {
-            Log.d("image-crop-picker", "Compressing image with max height " + maxHeight);
             compressor.setMaxHeight(maxHeight);
         }
 
@@ -59,6 +55,7 @@ public class Compression {
 
         if(paths.length > 1)
             compressedFileName += "." + paths[1];
+
 
         return compressor
                 .compressToFile(image, compressedFileName);
