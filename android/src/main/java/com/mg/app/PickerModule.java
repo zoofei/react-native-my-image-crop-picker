@@ -42,6 +42,9 @@ import cn.finalteam.rxgalleryfinal.rxbus.event.ImageRadioResultEvent;
 import cn.finalteam.rxgalleryfinal.ui.RxGalleryListener;
 import cn.finalteam.rxgalleryfinal.ui.base.IRadioImageCheckedListener;
 
+import static cn.finalteam.rxgalleryfinal.rxbus.event.RequestStorageReadAccessPermissionEvent.TYPE_CAMERA;
+import static com.yalantis.ucrop.UCrop.REQUEST_CROP;
+
 class PickerModule extends ReactContextBaseJavaModule implements ActivityEventListener {
     private static final int IMAGE_PICKER_REQUEST = 61110;
     private static final int CAMERA_PICKER_REQUEST = 61111;
@@ -213,7 +216,7 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
                     .subscribe(new RxBusResultDisposable<ImageRadioResultEvent>() {
                         @Override
                         protected void onEvent(ImageRadioResultEvent imageRadioResultEvent) throws Exception {
-                            //Toast.makeText(getBaseContext(), imageRadioResultEvent.getResult().getOriginalPath(), Toast.LENGTH_SHORT).show();
+                            Log.i("ReactNative","sing onEvent");
                             ImageCropBean result = imageRadioResultEvent.getResult();
                             WritableArray resultArr = new WritableNativeArray();
                             resultArr.pushMap(getImage(activity,result));
@@ -230,6 +233,7 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
                     .subscribe(new RxBusResultDisposable<ImageMultipleResultEvent>() {
                         @Override
                         protected void onEvent(ImageMultipleResultEvent imageMultipleResultEvent) throws Exception {
+                            Log.i("ReactNative","mutiple onEvent");
                             List<MediaBean> list = imageMultipleResultEvent.getResult();
                             WritableArray resultArr = new WritableNativeArray();
                             for(MediaBean bean:list){
@@ -288,27 +292,26 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
 
 
 
-
-    private void imagePickerResult(Activity activity, final int requestCode, final int resultCode, final Intent data) {
-        Log.i("ReactNative","imagePickerResult");
-    }
-
-    private void cameraPickerResult(Activity activity, final int requestCode, final int resultCode, final Intent data) {
-        Log.i("ReactNative","cameraPickerResult");
-    }
-
-    private void croppingResult(Activity activity, final int requestCode, final int resultCode, final Intent data) {
-        Log.i("ReactNative","croppingResult");
-    }
-
     @Override
     public void onActivityResult(Activity activity, final int requestCode, final int resultCode, final Intent data) {
-        if (requestCode == IMAGE_PICKER_REQUEST) {
-            imagePickerResult(activity, requestCode, resultCode, data);
-        } else if (requestCode == CAMERA_PICKER_REQUEST) {
-            cameraPickerResult(activity, requestCode, resultCode, data);
-        } else if (requestCode == UCrop.REQUEST_CROP) {
-            croppingResult(activity, requestCode, resultCode, data);
+        switch (resultCode) {
+            case Activity.RESULT_CANCELED:
+                Log.i("ReactNative","RESULT_CANCELED");
+                break;
+            case UCrop.RESULT_ERROR:
+                Log.i("ReactNative","RESULT_ERROR");
+                break;
+
+            case Activity.RESULT_OK:
+                switch (requestCode) {
+                    case TYPE_CAMERA:
+                        Log.i("ReactNative","TYPE_CAMERA");
+                        break;
+                    case REQUEST_CROP:
+                        Log.i("ReactNative","REQUEST_CROP");
+                        break;
+                }
+                break;
         }
     }
 
