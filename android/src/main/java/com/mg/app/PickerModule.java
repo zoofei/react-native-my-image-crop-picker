@@ -23,6 +23,7 @@ import com.nostra13.universalimageloader.core.ImageLoader;
 import com.nostra13.universalimageloader.core.ImageLoaderConfiguration;
 import com.nostra13.universalimageloader.core.assist.QueueProcessingType;
 import com.yalantis.ucrop.UCrop;
+import com.yalantis.ucrop.UCropActivity;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -33,6 +34,7 @@ import java.io.InputStream;
 import java.util.List;
 
 import cn.finalteam.rxgalleryfinal.RxGalleryFinal;
+import cn.finalteam.rxgalleryfinal.RxGalleryFinalApi;
 import cn.finalteam.rxgalleryfinal.bean.ImageCropBean;
 import cn.finalteam.rxgalleryfinal.bean.MediaBean;
 import cn.finalteam.rxgalleryfinal.imageloader.ImageLoaderType;
@@ -40,12 +42,13 @@ import cn.finalteam.rxgalleryfinal.rxbus.RxBusResultDisposable;
 import cn.finalteam.rxgalleryfinal.rxbus.event.ImageMultipleResultEvent;
 import cn.finalteam.rxgalleryfinal.rxbus.event.ImageRadioResultEvent;
 import cn.finalteam.rxgalleryfinal.ui.RxGalleryListener;
+import cn.finalteam.rxgalleryfinal.ui.base.IMultiImageCheckedListener;
 import cn.finalteam.rxgalleryfinal.ui.base.IRadioImageCheckedListener;
 
 import static cn.finalteam.rxgalleryfinal.rxbus.event.RequestStorageReadAccessPermissionEvent.TYPE_CAMERA;
 import static com.yalantis.ucrop.UCrop.REQUEST_CROP;
 
-class PickerModule extends ReactContextBaseJavaModule implements ActivityEventListener {
+class PickerModule extends ReactContextBaseJavaModule  implements ActivityEventListener {
     private static final int IMAGE_PICKER_REQUEST = 61110;
     private static final int CAMERA_PICKER_REQUEST = 61111;
     private static final String E_ACTIVITY_DOES_NOT_EXIST = "E_ACTIVITY_DOES_NOT_EXIST";
@@ -64,7 +67,7 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
 
     private Promise mPickerPromise;
 
-    private String mediaType = "any";
+    private String mediaType = "photo";
     private boolean multiple = false;
     private boolean includeBase64 = false;
     private boolean cropping = false;
@@ -98,9 +101,8 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
 
     PickerModule(ReactApplicationContext reactContext) {
         super(reactContext);
-        reactContext.addActivityEventListener(this);
         mReactContext = reactContext;
-
+        reactContext.addActivityEventListener(this);
         RxGalleryListener
                 .getInstance()
                 .setRadioImageCheckedListener(
@@ -108,11 +110,33 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
                             @Override
                             public void cropAfter(Object t) {
                                 Toast.makeText(mReactContext, t.toString(), Toast.LENGTH_SHORT).show();
+                                if(cropping) {
+                                    try {
+                                        WritableArray resultArr = new WritableNativeArray();
+                                        resultArr.pushMap(getImage(mReactContext.getCurrentActivity(), t.toString()));
+                                        mPickerPromise.resolve(t.toString());
+                                    }catch(Exception e){}
+                                }
                             }
 
                             @Override
                             public boolean isActivityFinish() {
                                 return false;
+                            }
+                        });
+
+        RxGalleryListener
+                .getInstance()
+                .setMultiImageCheckedListener(
+                        new IMultiImageCheckedListener() {
+                            @Override
+                            public void selectedImg(Object t, boolean isChecked) {
+                                //Toast.makeText(mReactContext, isChecked ? "选中" : "取消选中", Toast.LENGTH_SHORT).show();
+                            }
+
+                            @Override
+                            public void selectedImgMax(Object t, boolean isChecked, int maxSize) {
+                                Toast.makeText(mReactContext, "你最多只能选择" + maxSize + "张图片", Toast.LENGTH_SHORT).show();
                             }
                         });
     }
@@ -136,6 +160,9 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
         showCropGuidelines = options.hasKey("showCropGuidelines") ? options.getBoolean("showCropGuidelines") : showCropGuidelines;
         hideBottomControls = options.hasKey("hideBottomControls") ? options.getBoolean("hideBottomControls") : hideBottomControls;
         enableRotationGesture = options.hasKey("enableRotationGesture") ? options.getBoolean("enableRotationGesture") : enableRotationGesture;
+
+        RxGalleryFinalApi.setImgSaveRxSDCard("SmartWork");
+        RxGalleryFinalApi.setImgSaveRxCropSDCard("SmartWork/crop");
         this.options = options;
     }
 
@@ -175,6 +202,8 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
         String path = result.getOriginalPath();
         return getImage(activity,path);
     }
+
+
     private void initImageLoader(Activity activity) {
 
         ImageLoaderConfiguration.Builder config = new ImageLoaderConfiguration.Builder(activity);
@@ -201,35 +230,46 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
 
         RxGalleryFinal rxGalleryFinal =  RxGalleryFinal.with(activity);
 
-        if(compressQuality>0){
-            rxGalleryFinal.cropropCompressionQuality(compressQuality);
+        if(mediaType.equals("photo")){
+            rxGalleryFinal.image()
+            .imageLoader(ImageLoaderType.GLIDE);
+        }else{
+            cropping = false;
+            rxGalleryFinal.video();
         }
+
         if(!this.multiple) {
             if(cropping){
-                rxGalleryFinal.crop();
-                rxGalleryFinal.cropMaxResultSize(this.width,this.height);
+                rxGalleryFinal.crop()
+                .cropMaxResultSize(this.width,this.height)
+                .cropHideBottomControls(hideBottomControls)
+                        .cropropCompressionQuality(100)
+                        .cropWithAspectRatio(this.width,this.height)
+                        .cropOvalDimmedLayer(cropperCircleOverlay);
+                if (enableRotationGesture) {
+                    rxGalleryFinal.cropAllowedGestures(UCropActivity.ALL, UCropActivity.ALL, UCropActivity.ALL)
+                }
+
             }
             rxGalleryFinal
-                    .image()
                     .radio()
-                    .imageLoader(ImageLoaderType.GLIDE)
                     .subscribe(new RxBusResultDisposable<ImageRadioResultEvent>() {
                         @Override
                         protected void onEvent(ImageRadioResultEvent imageRadioResultEvent) throws Exception {
-                            Log.i("ReactNative","sing onEvent");
-                            ImageCropBean result = imageRadioResultEvent.getResult();
-                            WritableArray resultArr = new WritableNativeArray();
-                            resultArr.pushMap(getImage(activity,result));
-                            mPickerPromise.resolve(resultArr);
+                            if(!cropping) {
+                                Log.i("ReactNative", "sing onEvent");
+                                ImageCropBean result = imageRadioResultEvent.getResult();
+                                WritableArray resultArr = new WritableNativeArray();
+                                resultArr.pushMap(getImage(activity, result));
+                                mPickerPromise.resolve(resultArr);
+                            }
                         }
                     })
                     .openGallery();
         } else {
             rxGalleryFinal
-                    .image()
                     .multiple()
                     .maxSize(maxFiles)
-                    .imageLoader(ImageLoaderType.GLIDE)
                     .subscribe(new RxBusResultDisposable<ImageMultipleResultEvent>() {
                         @Override
                         protected void onEvent(ImageMultipleResultEvent imageMultipleResultEvent) throws Exception {
