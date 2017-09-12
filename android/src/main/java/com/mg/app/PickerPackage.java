@@ -1,4 +1,4 @@
-package com.reactnative.ivpusic.imagepicker;
+package com.mg.app;
 
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.JavaScriptModule;
@@ -10,12 +10,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * Created by ipusic on 5/16/16.
- */
 public class PickerPackage implements ReactPackage {
 
-    // Deprecated RN 0.47
+    @Override
     public List<Class<? extends JavaScriptModule>> createJSModules() {
         return Collections.emptyList();
     }
