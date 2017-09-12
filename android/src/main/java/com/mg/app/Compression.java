@@ -3,6 +3,7 @@ package com.mg.app;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.os.Environment;
+import android.util.Log;
 
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReadableMap;
@@ -41,10 +42,12 @@ public class Compression {
         }
 
         if (maxWidth != null) {
+            Log.i("ReactNative", "max width:"+maxWidth);
             compressor.setMaxWidth(maxWidth);
         }
 
         if (maxHeight != null) {
+            Log.i("ReactNative", "max height:"+maxHeight);
             compressor.setMaxHeight(maxHeight);
         }
 

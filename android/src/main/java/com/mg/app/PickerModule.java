@@ -216,7 +216,6 @@ class PickerModule extends ReactContextBaseJavaModule  {
         }
 
         if(!this.multiple) {
-            rxGalleryFinal.radio();
             if(cropping){
                 rxGalleryFinal.crop()
                         .cropMaxResultSize(this.width,this.height)
@@ -227,21 +226,22 @@ class PickerModule extends ReactContextBaseJavaModule  {
                 if (enableRotationGesture) {
                     rxGalleryFinal.cropAllowedGestures(UCropActivity.ALL, UCropActivity.ALL, UCropActivity.ALL);
                 }
-            }else{
-                rxGalleryFinal
+            }
+
+            rxGalleryFinal.radio()
                         .subscribe(new RxBusResultDisposable<ImageRadioResultEvent>() {
                             @Override
                             protected void onEvent(ImageRadioResultEvent imageRadioResultEvent) throws Exception {
-                                Log.i("ReactNative", "sing onEvent");
-                                ImageCropBean result = imageRadioResultEvent.getResult();
-                                WritableArray resultArr = new WritableNativeArray();
-                                resultArr.pushMap(getImage(activity, result));
-                                mPickerPromise.resolve(resultArr);
+                                if(!cropping) {
+                                    Log.i("ReactNative", "sing onEvent");
+                                    ImageCropBean result = imageRadioResultEvent.getResult();
+                                    WritableArray resultArr = new WritableNativeArray();
+                                    resultArr.pushMap(getImage(activity, result));
+                                    mPickerPromise.resolve(resultArr);
+                                }
                             }
-                        });
-            }
+                        }).openGallery();
 
-            rxGalleryFinal.openGallery();
         } else {
             rxGalleryFinal
                     .multiple()
