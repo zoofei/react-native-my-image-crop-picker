@@ -39,7 +39,6 @@ import cn.finalteam.rxgalleryfinal.rxbus.RxBusResultDisposable;
 import cn.finalteam.rxgalleryfinal.rxbus.event.ImageMultipleResultEvent;
 import cn.finalteam.rxgalleryfinal.rxbus.event.ImageRadioResultEvent;
 import cn.finalteam.rxgalleryfinal.ui.RxGalleryListener;
-import cn.finalteam.rxgalleryfinal.ui.base.IMultiImageCheckedListener;
 import cn.finalteam.rxgalleryfinal.ui.base.IRadioImageCheckedListener;
 
 class PickerModule extends ReactContextBaseJavaModule  {
@@ -113,24 +112,10 @@ class PickerModule extends ReactContextBaseJavaModule  {
 
                             @Override
                             public boolean isActivityFinish() {
-                                return false;
+                                return true;
                             }
                         });
 
-        RxGalleryListener
-                .getInstance()
-                .setMultiImageCheckedListener(
-                        new IMultiImageCheckedListener() {
-                            @Override
-                            public void selectedImg(Object t, boolean isChecked) {
-                                //Toast.makeText(mReactContext, isChecked ? "选中" : "取消选中", Toast.LENGTH_SHORT).show();
-                            }
-
-                            @Override
-                            public void selectedImgMax(Object t, boolean isChecked, int maxSize) {
-                                Toast.makeText(mReactContext, "你最多只能选择" + maxSize + "张图片", Toast.LENGTH_SHORT).show();
-                            }
-                        });
     }
 
     @Override
@@ -216,11 +201,11 @@ class PickerModule extends ReactContextBaseJavaModule  {
             return;
         }
 
+        RxGalleryFinal rxGalleryFinal = RxGalleryFinal.with(mReactContext);
+
         setConfiguration(options);
         initImageLoader(activity);
         mPickerPromise = promise;
-
-        RxGalleryFinal rxGalleryFinal =  RxGalleryFinal.with(activity);
 
         if(mediaType.equals("photo")){
             rxGalleryFinal.image()
