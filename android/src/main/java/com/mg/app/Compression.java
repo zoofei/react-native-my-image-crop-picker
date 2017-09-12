@@ -1,5 +1,4 @@
 package com.mg.app;
-
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.os.Environment;
@@ -9,6 +8,7 @@ import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReadableMap;
 
 import java.io.File;
+import java.io.IOException;
 
 import id.zelory.compressor.Compressor;
 
@@ -18,10 +18,10 @@ import id.zelory.compressor.Compressor;
 
 public class Compression {
 
-    public File compressImage(final Activity activity, final ReadableMap options, final String originalImagePath) {
-        Integer maxWidth = options.hasKey("width") ? options.getInt("width") : null;
-        Integer maxHeight = options.hasKey("height") ? options.getInt("height") : null;
-        Integer quality = options.hasKey("compressQuality") ? options.getInt("compressQuality") : null;
+    public File compressImage(final Activity activity, final ReadableMap options, final String originalImagePath) throws IOException {
+        Integer maxWidth = options.hasKey("compressImageMaxWidth") ? options.getInt("compressImageMaxWidth") : null;
+        Integer maxHeight = options.hasKey("compressImageMaxHeight") ? options.getInt("compressImageMaxHeight") : null;
+        Double quality = options.hasKey("compressImageQuality") ? options.getDouble("compressImageQuality") : null;
 
         if (maxWidth == null && maxHeight == null && quality == null) {
             Log.d("image-crop-picker", "Skipping image compression");
@@ -29,32 +29,39 @@ public class Compression {
         }
 
         Log.d("image-crop-picker", "Image compression activated");
-        Compressor.Builder builder = new Compressor.Builder(activity)
+        Compressor compressor = new Compressor(activity)
                 .setCompressFormat(Bitmap.CompressFormat.JPEG)
                 .setDestinationDirectoryPath(Environment.getExternalStoragePublicDirectory(
                         Environment.DIRECTORY_PICTURES).getAbsolutePath());
 
-        if (quality == null || quality<=0 || quality>100) {
+        if (quality == null) {
             Log.d("image-crop-picker", "Compressing image with quality 100");
-            builder.setQuality(100);
+            compressor.setQuality(100);
         } else {
-            Log.d("image-crop-picker", "Compressing image with quality " + (quality));
-            builder.setQuality(quality);
+            Log.d("image-crop-picker", "Compressing image with quality " + (quality * 100));
+            compressor.setQuality((int) (quality * 100));
         }
 
         if (maxWidth != null) {
             Log.d("image-crop-picker", "Compressing image with max width " + maxWidth);
-            builder.setMaxWidth(maxWidth);
+            compressor.setMaxWidth(maxWidth);
         }
 
         if (maxHeight != null) {
             Log.d("image-crop-picker", "Compressing image with max height " + maxHeight);
-            builder.setMaxHeight(maxHeight);
+            compressor.setMaxHeight(maxHeight);
         }
 
-        return builder
-                .build()
-                .compressToFile(new File(originalImagePath));
+        File image = new File(originalImagePath);
+
+        String[] paths = image.getName().split("\\.(?=[^\\.]+$)");
+        String compressedFileName = paths[0] + "-compressed";
+
+        if(paths.length > 1)
+            compressedFileName += "." + paths[1];
+
+        return compressor
+                .compressToFile(image, compressedFileName);
     }
 
     public synchronized void compressVideo(final Activity activity, final ReadableMap options, final String originalVideo, final String compressedVideo, final Promise promise) {

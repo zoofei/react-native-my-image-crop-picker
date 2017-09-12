@@ -1,10 +1,14 @@
 package com.mg.app;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.util.Base64;
+import android.util.Log;
+import android.widget.Toast;
 
+import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -18,6 +22,7 @@ import com.nostra13.universalimageloader.cache.disc.naming.Md5FileNameGenerator;
 import com.nostra13.universalimageloader.core.ImageLoader;
 import com.nostra13.universalimageloader.core.ImageLoaderConfiguration;
 import com.nostra13.universalimageloader.core.assist.QueueProcessingType;
+import com.yalantis.ucrop.UCrop;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -31,32 +36,82 @@ import cn.finalteam.rxgalleryfinal.RxGalleryFinal;
 import cn.finalteam.rxgalleryfinal.bean.ImageCropBean;
 import cn.finalteam.rxgalleryfinal.bean.MediaBean;
 import cn.finalteam.rxgalleryfinal.imageloader.ImageLoaderType;
-import cn.finalteam.rxgalleryfinal.rxbus.RxBusResultSubscriber;
+import cn.finalteam.rxgalleryfinal.rxbus.RxBusResultDisposable;
 import cn.finalteam.rxgalleryfinal.rxbus.event.ImageMultipleResultEvent;
 import cn.finalteam.rxgalleryfinal.rxbus.event.ImageRadioResultEvent;
+import cn.finalteam.rxgalleryfinal.ui.RxGalleryListener;
+import cn.finalteam.rxgalleryfinal.ui.base.IRadioImageCheckedListener;
 
-class PickerModule extends ReactContextBaseJavaModule {
+class PickerModule extends ReactContextBaseJavaModule implements ActivityEventListener {
+    private static final int IMAGE_PICKER_REQUEST = 61110;
+    private static final int CAMERA_PICKER_REQUEST = 61111;
     private static final String E_ACTIVITY_DOES_NOT_EXIST = "E_ACTIVITY_DOES_NOT_EXIST";
+
+    private static final String E_PICKER_CANCELLED_KEY = "E_PICKER_CANCELLED";
+    private static final String E_PICKER_CANCELLED_MSG = "User cancelled image selection";
+
+    private static final String E_CALLBACK_ERROR = "E_CALLBACK_ERROR";
+    private static final String E_FAILED_TO_SHOW_PICKER = "E_FAILED_TO_SHOW_PICKER";
+    private static final String E_FAILED_TO_OPEN_CAMERA = "E_FAILED_TO_OPEN_CAMERA";
+    private static final String E_NO_IMAGE_DATA_FOUND = "E_NO_IMAGE_DATA_FOUND";
+    private static final String E_CAMERA_IS_NOT_AVAILABLE = "E_CAMERA_IS_NOT_AVAILABLE";
+    private static final String E_CANNOT_LAUNCH_CAMERA = "E_CANNOT_LAUNCH_CAMERA";
+    private static final String E_PERMISSIONS_MISSING = "E_PERMISSION_MISSING";
+    private static final String E_ERROR_WHILE_CLEANING_FILES = "E_ERROR_WHILE_CLEANING_FILES";
 
     private Promise mPickerPromise;
 
-    private boolean cropping = false;
+    private String mediaType = "any";
     private boolean multiple = false;
-    private boolean isCamera = false;
     private boolean includeBase64 = false;
-    private boolean openCameraOnStart = false;
+    private boolean cropping = false;
+    private boolean cropperCircleOverlay = false;
+    private boolean showCropGuidelines = true;
+    private boolean hideBottomControls = false;
+    private boolean enableRotationGesture = false;
+    private ReadableMap options;
+
+    //Grey 800
+    private final String DEFAULT_TINT = "#424242";
+    private String cropperActiveWidgetColor = DEFAULT_TINT;
+    private String cropperStatusBarColor = DEFAULT_TINT;
+    private String cropperToolbarColor = DEFAULT_TINT;
+
     //Light Blue 500
+    private final String DEFAULT_WIDGET_COLOR = "#03A9F4";
     private int width = 200;
     private int height = 200;
-    private int maxSize = 9;
+
+    private int minFiles = 1;
+    private int maxFiles = 9;
+
     private int compressQuality = -1;
     private final ReactApplicationContext mReactContext;
 
+    private ResultCollector resultCollector;
     private Compression compression = new Compression();
-    private ReadableMap options;
+
+
+
     PickerModule(ReactApplicationContext reactContext) {
         super(reactContext);
+        reactContext.addActivityEventListener(this);
         mReactContext = reactContext;
+
+        RxGalleryListener
+                .getInstance()
+                .setRadioImageCheckedListener(
+                        new IRadioImageCheckedListener() {
+                            @Override
+                            public void cropAfter(Object t) {
+                                Toast.makeText(mReactContext, t.toString(), Toast.LENGTH_SHORT).show();
+                            }
+
+                            @Override
+                            public boolean isActivityFinish() {
+                                return false;
+                            }
+                        });
     }
 
     @Override
@@ -65,16 +120,19 @@ class PickerModule extends ReactContextBaseJavaModule {
     }
 
     private void setConfiguration(final ReadableMap options) {
+        mediaType = options.hasKey("mediaType") ? options.getString("mediaType") : mediaType;
         multiple = options.hasKey("multiple") && options.getBoolean("multiple");
-        isCamera = options.hasKey("isCamera") && options.getBoolean("isCamera");
-        openCameraOnStart = options.hasKey("openCameraOnStart") && options.getBoolean("openCameraOnStart");
+        includeBase64 = options.hasKey("includeBase64") && options.getBoolean("includeBase64");
         width = options.hasKey("width") ? options.getInt("width") : width;
         height = options.hasKey("height") ? options.getInt("height") : height;
-        maxSize = options.hasKey("maxSize") ? options.getInt("maxSize") : maxSize;
         cropping = options.hasKey("cropping") ? options.getBoolean("cropping") : cropping;
-        includeBase64 = options.hasKey("includeBase64") && options.getBoolean("includeBase64");
-        compressQuality = options.hasKey("compressQuality") ? options.getInt("compressQuality") : compressQuality;
-
+        cropperActiveWidgetColor = options.hasKey("cropperActiveWidgetColor") ? options.getString("cropperActiveWidgetColor") : cropperActiveWidgetColor;
+        cropperStatusBarColor = options.hasKey("cropperStatusBarColor") ? options.getString("cropperStatusBarColor") : cropperStatusBarColor;
+        cropperToolbarColor = options.hasKey("cropperToolbarColor") ? options.getString("cropperToolbarColor") : cropperToolbarColor;
+        cropperCircleOverlay = options.hasKey("cropperCircleOverlay") ? options.getBoolean("cropperCircleOverlay") : cropperCircleOverlay;
+        showCropGuidelines = options.hasKey("showCropGuidelines") ? options.getBoolean("showCropGuidelines") : showCropGuidelines;
+        hideBottomControls = options.hasKey("hideBottomControls") ? options.getBoolean("hideBottomControls") : hideBottomControls;
+        enableRotationGesture = options.hasKey("enableRotationGesture") ? options.getBoolean("enableRotationGesture") : enableRotationGesture;
         this.options = options;
     }
 
@@ -139,11 +197,7 @@ class PickerModule extends ReactContextBaseJavaModule {
         mPickerPromise = promise;
 
         RxGalleryFinal rxGalleryFinal =  RxGalleryFinal.with(activity);
-        if(openCameraOnStart){
-            rxGalleryFinal.openCameraOnStart();
-        }else if(!isCamera){
-            rxGalleryFinal.hideCamera();
-        }
+
         if(compressQuality>0){
             rxGalleryFinal.cropropCompressionQuality(compressQuality);
         }
@@ -156,7 +210,7 @@ class PickerModule extends ReactContextBaseJavaModule {
                     .image()
                     .radio()
                     .imageLoader(ImageLoaderType.GLIDE)
-                    .subscribe(new RxBusResultSubscriber<ImageRadioResultEvent>() {
+                    .subscribe(new RxBusResultDisposable<ImageRadioResultEvent>() {
                         @Override
                         protected void onEvent(ImageRadioResultEvent imageRadioResultEvent) throws Exception {
                             //Toast.makeText(getBaseContext(), imageRadioResultEvent.getResult().getOriginalPath(), Toast.LENGTH_SHORT).show();
@@ -171,19 +225,17 @@ class PickerModule extends ReactContextBaseJavaModule {
             rxGalleryFinal
                     .image()
                     .multiple()
-                    .maxSize(maxSize)
+                    .maxSize(maxFiles)
                     .imageLoader(ImageLoaderType.GLIDE)
-                    .subscribe(new RxBusResultSubscriber<ImageMultipleResultEvent>() {
+                    .subscribe(new RxBusResultDisposable<ImageMultipleResultEvent>() {
                         @Override
                         protected void onEvent(ImageMultipleResultEvent imageMultipleResultEvent) throws Exception {
-                            //Toast.makeText(getBaseContext(), "已选择" + imageMultipleResultEvent.getResult().size() +"张图片", Toast.LENGTH_SHORT).show();
                             List<MediaBean> list = imageMultipleResultEvent.getResult();
                             WritableArray resultArr = new WritableNativeArray();
                             for(MediaBean bean:list){
                                 resultArr.pushMap(getImage(activity,bean));
                             }
                             mPickerPromise.resolve(resultArr);
-
                             mPickerPromise.resolve(list);
                         }
                     })
@@ -232,5 +284,35 @@ class PickerModule extends ReactContextBaseJavaModule {
         }
 
         return options;
+    }
+
+
+
+
+    private void imagePickerResult(Activity activity, final int requestCode, final int resultCode, final Intent data) {
+        Log.i("ReactNative","imagePickerResult");
+    }
+
+    private void cameraPickerResult(Activity activity, final int requestCode, final int resultCode, final Intent data) {
+        Log.i("ReactNative","cameraPickerResult");
+    }
+
+    private void croppingResult(Activity activity, final int requestCode, final int resultCode, final Intent data) {
+        Log.i("ReactNative","croppingResult");
+    }
+
+    @Override
+    public void onActivityResult(Activity activity, final int requestCode, final int resultCode, final Intent data) {
+        if (requestCode == IMAGE_PICKER_REQUEST) {
+            imagePickerResult(activity, requestCode, resultCode, data);
+        } else if (requestCode == CAMERA_PICKER_REQUEST) {
+            cameraPickerResult(activity, requestCode, resultCode, data);
+        } else if (requestCode == UCrop.REQUEST_CROP) {
+            croppingResult(activity, requestCode, resultCode, data);
+        }
+    }
+
+    @Override
+    public void onNewIntent(Intent intent) {
     }
 }

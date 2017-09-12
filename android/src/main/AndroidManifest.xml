@@ -2,19 +2,19 @@
     package="com.mg.app">
 
     <application>
-        <uses-feature android:name="android.hardware.camera" android:required="true"/>
+        <uses-permission android:name="android.permission.CAMERA" />
         <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
         <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
-        <activity android:name="cn.finalteam.rxgalleryfinal.ui.activity.MediaActivity"
-            android:screenOrientation="portrait"
+        <activity
+            android:name="cn.finalteam.rxgalleryfinal.ui.activity.MediaActivity"
             android:exported="true"
-            android:theme="@style/Theme_Light.Default"/>
+            android:theme="@style/Theme_Light.Test" />
 
         <activity
             android:name="com.yalantis.ucrop.UCropActivity"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme_Light.Default"/>
+            android:screenOrientation="portrait" />
+
     </application>
 
 </manifest>
