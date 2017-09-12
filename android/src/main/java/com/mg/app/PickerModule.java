@@ -5,7 +5,6 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.util.Base64;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -100,7 +99,6 @@ class PickerModule extends ReactContextBaseJavaModule  {
                         new IRadioImageCheckedListener() {
                             @Override
                             public void cropAfter(Object t) {
-                                Toast.makeText(mReactContext, t.toString(), Toast.LENGTH_SHORT).show();
                                 if(cropping) {
                                     try {
                                         WritableArray resultArr = new WritableNativeArray();
