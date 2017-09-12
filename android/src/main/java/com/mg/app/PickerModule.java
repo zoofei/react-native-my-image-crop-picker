@@ -1,14 +1,12 @@
 package com.mg.app;
 
 import android.app.Activity;
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.util.Base64;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -22,7 +20,6 @@ import com.nostra13.universalimageloader.cache.disc.naming.Md5FileNameGenerator;
 import com.nostra13.universalimageloader.core.ImageLoader;
 import com.nostra13.universalimageloader.core.ImageLoaderConfiguration;
 import com.nostra13.universalimageloader.core.assist.QueueProcessingType;
-import com.yalantis.ucrop.UCrop;
 import com.yalantis.ucrop.UCropActivity;
 
 import java.io.ByteArrayOutputStream;
@@ -45,10 +42,7 @@ import cn.finalteam.rxgalleryfinal.ui.RxGalleryListener;
 import cn.finalteam.rxgalleryfinal.ui.base.IMultiImageCheckedListener;
 import cn.finalteam.rxgalleryfinal.ui.base.IRadioImageCheckedListener;
 
-import static cn.finalteam.rxgalleryfinal.rxbus.event.RequestStorageReadAccessPermissionEvent.TYPE_CAMERA;
-import static com.yalantis.ucrop.UCrop.REQUEST_CROP;
-
-class PickerModule extends ReactContextBaseJavaModule  implements ActivityEventListener {
+class PickerModule extends ReactContextBaseJavaModule  {
     private static final int IMAGE_PICKER_REQUEST = 61110;
     private static final int CAMERA_PICKER_REQUEST = 61111;
     private static final String E_ACTIVITY_DOES_NOT_EXIST = "E_ACTIVITY_DOES_NOT_EXIST";
@@ -84,12 +78,11 @@ class PickerModule extends ReactContextBaseJavaModule  implements ActivityEventL
     private String cropperToolbarColor = DEFAULT_TINT;
 
     //Light Blue 500
-    private final String DEFAULT_WIDGET_COLOR = "#03A9F4";
     private int width = 200;
     private int height = 200;
 
     private int minFiles = 1;
-    private int maxFiles = 9;
+    private int maxFiles = 5;
 
     private int compressQuality = -1;
     private final ReactApplicationContext mReactContext;
@@ -102,7 +95,6 @@ class PickerModule extends ReactContextBaseJavaModule  implements ActivityEventL
     PickerModule(ReactApplicationContext reactContext) {
         super(reactContext);
         mReactContext = reactContext;
-        reactContext.addActivityEventListener(this);
         RxGalleryListener
                 .getInstance()
                 .setRadioImageCheckedListener(
@@ -114,7 +106,7 @@ class PickerModule extends ReactContextBaseJavaModule  implements ActivityEventL
                                     try {
                                         WritableArray resultArr = new WritableNativeArray();
                                         resultArr.pushMap(getImage(mReactContext.getCurrentActivity(), t.toString()));
-                                        mPickerPromise.resolve(t.toString());
+                                        mPickerPromise.resolve(resultArr);
                                     }catch(Exception e){}
                                 }
                             }
@@ -232,7 +224,7 @@ class PickerModule extends ReactContextBaseJavaModule  implements ActivityEventL
 
         if(mediaType.equals("photo")){
             rxGalleryFinal.image()
-            .imageLoader(ImageLoaderType.GLIDE);
+            .imageLoader(ImageLoaderType.UNIVERSAL);
         }else{
             cropping = false;
             rxGalleryFinal.video();
@@ -241,13 +233,13 @@ class PickerModule extends ReactContextBaseJavaModule  implements ActivityEventL
         if(!this.multiple) {
             if(cropping){
                 rxGalleryFinal.crop()
-                .cropMaxResultSize(this.width,this.height)
-                .cropHideBottomControls(hideBottomControls)
+                        .cropMaxResultSize(this.width,this.height)
+                        .cropHideBottomControls(hideBottomControls)
                         .cropropCompressionQuality(100)
                         .cropWithAspectRatio(this.width,this.height)
                         .cropOvalDimmedLayer(cropperCircleOverlay);
                 if (enableRotationGesture) {
-                    rxGalleryFinal.cropAllowedGestures(UCropActivity.ALL, UCropActivity.ALL, UCropActivity.ALL)
+                    rxGalleryFinal.cropAllowedGestures(UCropActivity.ALL, UCropActivity.ALL, UCropActivity.ALL);
                 }
 
             }
@@ -280,7 +272,6 @@ class PickerModule extends ReactContextBaseJavaModule  implements ActivityEventL
                                 resultArr.pushMap(getImage(activity,bean));
                             }
                             mPickerPromise.resolve(resultArr);
-                            mPickerPromise.resolve(list);
                         }
                     })
                     .openGallery();
@@ -331,31 +322,4 @@ class PickerModule extends ReactContextBaseJavaModule  implements ActivityEventL
     }
 
 
-
-    @Override
-    public void onActivityResult(Activity activity, final int requestCode, final int resultCode, final Intent data) {
-        switch (resultCode) {
-            case Activity.RESULT_CANCELED:
-                Log.i("ReactNative","RESULT_CANCELED");
-                break;
-            case UCrop.RESULT_ERROR:
-                Log.i("ReactNative","RESULT_ERROR");
-                break;
-
-            case Activity.RESULT_OK:
-                switch (requestCode) {
-                    case TYPE_CAMERA:
-                        Log.i("ReactNative","TYPE_CAMERA");
-                        break;
-                    case REQUEST_CROP:
-                        Log.i("ReactNative","REQUEST_CROP");
-                        break;
-                }
-                break;
-        }
-    }
-
-    @Override
-    public void onNewIntent(Intent intent) {
-    }
 }
