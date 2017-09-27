@@ -210,7 +210,8 @@ class PickerModule extends ReactContextBaseJavaModule  {
             .imageLoader(ImageLoaderType.UNIVERSAL);
         }else{
             cropping = false;
-            rxGalleryFinal.video();
+            rxGalleryFinal.video()
+            .imageLoader(ImageLoaderType.UNIVERSAL);
         }
 
         if(!this.multiple) {
