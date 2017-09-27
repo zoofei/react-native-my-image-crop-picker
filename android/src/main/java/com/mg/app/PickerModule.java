@@ -206,10 +206,10 @@ class PickerModule extends ReactContextBaseJavaModule  {
         mPickerPromise = promise;
 
         if(mediaType.equals("photo") || mediaType.equals("all")){
-            rxGalleryFinal.image()
+            rxGalleryFinal.image();
         }
         if(mediaType.equals("video") || mediaType.equals("all")){
-            rxGalleryFinal.video()
+            rxGalleryFinal.video();
         }
 
         if(!this.multiple) {
