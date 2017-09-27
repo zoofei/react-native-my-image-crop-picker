@@ -199,19 +199,17 @@ class PickerModule extends ReactContextBaseJavaModule  {
             return;
         }
 
-        RxGalleryFinal rxGalleryFinal = RxGalleryFinal.with(mReactContext);
+        RxGalleryFinal rxGalleryFinal = RxGalleryFinal.with(mReactContext).imageLoader(ImageLoaderType.UNIVERSAL);;
 
         setConfiguration(options);
         initImageLoader(activity);
         mPickerPromise = promise;
 
-        if(mediaType.equals("photo")){
+        if(mediaType.equals("photo") || mediaType.equals("all")){
             rxGalleryFinal.image()
-            .imageLoader(ImageLoaderType.UNIVERSAL);
-        }else{
-            cropping = false;
+        }
+        if(mediaType.equals("video") || mediaType.equals("all")){
             rxGalleryFinal.video()
-            .imageLoader(ImageLoaderType.UNIVERSAL);
         }
 
         if(!this.multiple) {
