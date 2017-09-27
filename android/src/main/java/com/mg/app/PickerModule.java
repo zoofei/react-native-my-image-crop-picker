@@ -59,7 +59,7 @@ class PickerModule extends ReactContextBaseJavaModule  {
 
     private Promise mPickerPromise;
 
-    private String mediaType = "photo";
+    private String mediaType = "any";
     private boolean multiple = false;
     private boolean includeBase64 = false;
     private boolean cropping = false;
@@ -142,29 +142,40 @@ class PickerModule extends ReactContextBaseJavaModule  {
     }
 
     private WritableMap getImage(final Activity activity,String path) throws Exception {
-        WritableMap image = new WritableNativeMap();
+        WritableMap file = new WritableNativeMap();
         if (path.startsWith("http://") || path.startsWith("https://")) {
             throw new Exception("Cannot select remote files");
         }
-        validateImage(path);
+        //validateImage(path);
+        if(MediaFile.isImageFileType(path)){
+            // if compression options are provided image will be compressed. If none options is provided,
+            // then original image will be returned
+            File compressed = compression.compressImage(activity, options, path);
+            String compressedPath = compressed.getPath();
+            BitmapFactory.Options options = validateImage(compressedPath);
 
-        // if compression options are provided image will be compressed. If none options is provided,
-        // then original image will be returned
-        File compressedImage = compression.compressImage(activity, options, path);
-        String compressedImagePath = compressedImage.getPath();
-        BitmapFactory.Options options = validateImage(compressedImagePath);
+            file.putString("path", "file://" + compressedPath);
+            file.putInt("width", options.outWidth);
+            file.putInt("height", options.outHeight);
+            file.putString("mime", options.outMimeType);
+            file.putInt("size", (int) new File(compressedPath).length());
 
-        image.putString("path", "file://" + compressedImagePath);
-        image.putInt("width", options.outWidth);
-        image.putInt("height", options.outHeight);
-        image.putString("mime", options.outMimeType);
-        image.putInt("size", (int) new File(compressedImagePath).length());
+            if (includeBase64) {
+                file.putString("data", getBase64StringFromFile(compressedPath));
+            }
 
-        if (includeBase64) {
-            image.putString("data", getBase64StringFromFile(compressedImagePath));
+
+        }else if(MediaFile.isVideoFileType(path)){
+            file.putString("path", "file://" + path);
+            file.putInt("width", 0);
+            file.putInt("height", 0);
+            file.putString("mime", MediaFile.getFileType(path).getMimeType());
+            file.putInt("size", (int) new File(path).length());
+
         }
 
-        return image;
+        return file;
+
     }
 
     private WritableMap getImage(final Activity activity, ImageCropBean result) throws Exception {
@@ -205,23 +216,25 @@ class PickerModule extends ReactContextBaseJavaModule  {
         initImageLoader(activity);
         mPickerPromise = promise;
 
-        if(mediaType.equals("photo") || mediaType.equals("all")){
-            rxGalleryFinal.image();
+        if(mediaType.equals("photo") || mediaType.equals("any")){
+            rxGalleryFinal = rxGalleryFinal.image();
         }
-        if(mediaType.equals("video") || mediaType.equals("all")){
-            rxGalleryFinal.video();
+
+        if(mediaType.equals("video") || mediaType.equals("any")){
+            cropping = false;
+            rxGalleryFinal = rxGalleryFinal.video();
         }
 
         if(!this.multiple) {
             if(cropping){
-                rxGalleryFinal.crop()
+                rxGalleryFinal = rxGalleryFinal.crop()
                         .cropMaxResultSize(this.width,this.height)
                         .cropHideBottomControls(hideBottomControls)
                         .cropropCompressionQuality(100)
                         .cropWithAspectRatio(this.width,this.height)
                         .cropOvalDimmedLayer(cropperCircleOverlay);
                 if (enableRotationGesture) {
-                    rxGalleryFinal.cropAllowedGestures(UCropActivity.ALL, UCropActivity.ALL, UCropActivity.ALL);
+                    rxGalleryFinal = rxGalleryFinal.cropAllowedGestures(UCropActivity.ALL, UCropActivity.ALL, UCropActivity.ALL);
                 }
             }
 
